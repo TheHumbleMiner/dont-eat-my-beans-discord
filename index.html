@@ -78,7 +78,7 @@
     <script src="https://unpkg.com/playroomkit@0.0.23/dist/playroomkit.js"></script>
     <script>
         // Initialize Playroom
-        Playroom.insertCoin({ gameId: "1345215752457949227", discord: true }).then(() => {
+        Playroom.insertCoin({ gameId: "YOUR_APPLICATION_ID", discord: true }).then(() => {
             console.log("Connected to Playroom!");
             Playroom.onPlayerJoin((player) => {
                 player.setState("game", Playroom.getState("defaultGame") || {
