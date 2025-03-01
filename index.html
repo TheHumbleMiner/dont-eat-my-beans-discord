@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Don't Eat My Beans! - Discord</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(135deg, #a8e063, #56ab2f);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .status, .actions, .display {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        h3 {
+            color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <h1>Don't Eat My Beans! - Discord</h1>
+    <div class="status">
+        <p>Pickbit: <span id="pickbit">100</span> 💰</p>
+        <p>Beans: <span id="beans">0</span> 🌱</p>
+        <p>Whistle Pigs: <span id="whistlePigs">0</span> 🦫</p>
+        <p>Garden Fences: <span id="gardenFences">0</span> 🏡</p>
+        <p>Beans Harvested: <span id="beansHarvested">0</span> 🌾</p>
+    </div>
+    <div class="actions">
+        <button onclick="buyBean()">Buy Bean (15 PKBIT) 🌱</button>
+        <button onclick="plantBean()">Plant Bean 🌿</button>
+        <button onclick="buyWhistlePig()">Buy Whistle Pig (30 PKBIT) 🦫</button>
+        <button onclick="releaseWhistlePig()">Release Whistle Pig 🦫</button>
+        <button onclick="buyGardenFence()">Buy Garden Fence (60 PKBIT) 🏡</button>
+        <button onclick="harvest()">Harvest 🌾</button>
+        <button onclick="Playroom.openDiscordInviteDialog()">Invite Friends 👥</button>
+    </div>
+    <div class="display">
+        <h3>Planted Beans 🌱</h3>
+        <div id="planted-beans">None</div>
+    </div>
+    <div class="display">
+        <h3>Mature Plants 🌿</h3>
+        <div id="mature-plants">None</div>
+    </div>
+    <script src="https://unpkg.com/playroomkit@0.0.23/dist/playroomkit.js"></script>
+    <script>
+        // Initialize Playroom
+        Playroom.insertCoin({ gameId: "1345215752457949227", discord: true }).then(() => {
+            console.log("Connected to Playroom!");
+            Playroom.onPlayerJoin((player) => {
+                player.setState("game", Playroom.getState("defaultGame") || {
+                    pickbit: 100,
+                    beans: 0,
+                    plantedBeans: [],
+                    maturePlants: [],
+                    whistlePigs: 0,
+                    gardenFences: 0,
+                    lastWhistlePigTime: 0,
+                    beansHarvested: 0,
+                    lastProduction: 0
+                });
+            });
+
+            setInterval(updateGame, 1000);
+        });
+
+        function updateGame() {
+            const me = Playroom.myPlayer();
+            if (!me) return;
+            const state = me.getState("game");
+            const now = Date.now();
+
+            // Update planted beans to mature plants
+            state.plantedBeans = state.plantedBeans.filter(bean => {
+                if (now >= bean.timestamp + 3*24*60*60*1000) {
+                    state.maturePlants.push(bean);
+                    return false;
+                }
+                return true;
+            });
+
+            // Produce beans every 36 hours
+            if (state.maturePlants.length > 0 && now - (state.lastProduction || 0) >= 36*60*60*1000) {
+                state.beans += state.maturePlants.length;
+                state.lastProduction = now;
+            }
+
+            me.setState("game", state);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const me = Playroom.myPlayer();
+            if (!me) return;
+            const state = me.getState("game") || {};
+
+            document.getElementById('pickbit').textContent = state.pickbit || 0;
+            document.getElementById('beans').textContent = state.beans || 0;
+            document.getElementById('whistlePigs').textContent = state.whistlePigs || 0;
+            document.getElementById('gardenFences').textContent = state.gardenFences || 0;
+            document.getElementById('beansHarvested').textContent = state.beansHarvested || 0;
+
+            let plantedDisplay = (state.plantedBeans || []).map(bean => {
+                let timeLeft = Math.max(0, (bean.timestamp + 3*24*60*60*1000 - Date.now()) / (24*60*60*1000));
+                return `🌱 (${timeLeft.toFixed(1)} days)`;
+            }).join(' ');
+            document.getElementById('planted-beans').textContent = plantedDisplay || 'None';
+
+            let matureDisplay = (state.maturePlants || []).map(() => '🌿').join(' ');
+            document.getElementById('mature-plants').textContent = matureDisplay || 'None';
+        }
+
+        function buyBean() {
+            const me = Playroom.myPlayer();
+            const state = me.getState("game");
+            if (state.pickbit >= 15) {
+                state.pickbit -= 15;
+                state.beans++;
+                me.setState("game", state);
+            }
+        }
+
+        function plantBean() {
+            const me = Playroom.myPlayer();
+            const state = me.getState("game");
+            if (state.beans > 0) {
+                state.beans--;
+                state.plantedBeans.push({ timestamp: Date.now() });
+                me.setState("game", state);
+            }
+        }
+
+        function buyWhistlePig() {
+            const me = Playroom.myPlayer();
+            const state = me.getState("game");
+            if (state.pickbit >= 30) {
+                state.pickbit -= 30;
+                state.whistlePigs++;
+                me.setState("game", state);
+            }
+        }
+
+        function releaseWhistlePig() {
+            const me = Playroom.myPlayer();
+            const state = me.getState("game");
+            const now = Date.now();
+            if (now - state.lastWhistlePigTime < 12*60*60*1000) return;
+            if (state.whistlePigs > 0) {
+                state.whistlePigs--;
+                state.lastWhistlePigTime = now;
+                const players = Playroom.getPlayers();
+                const others = players.filter(p => p.id !== me.id);
+                if (others.length > 0) {
+                    const target = others[Math.floor(Math.random() * others.length)];
+                    const targetState = target.getState("game");
+                    const successChance = 0.6 - (targetState.gardenFences * 0.2);
+                    if (Math.random() < Math.max(0, successChance) && targetState.plantedBeans.length > 0) {
+                        targetState.plantedBeans.shift();
+                        target.setState("game", targetState);
+                    }
+                }
+                me.setState("game", state);
+            }
+        }
+
+        function buyGardenFence() {
+            const me = Playroom.myPlayer();
+            const state = me.getState("game");
+            if (state.pickbit >= 60 && state.gardenFences < 3) {
+                state.pickbit -= 60;
+                state.gardenFences++;
+                me.setState("game", state);
+            }
+        }
+
+        function harvest() {
+            const me = Playroom.myPlayer();
+            const state = me.getState("game");
+            if (state.maturePlants.length > 0) {
+                const harvested = state.maturePlants.length;
+                state.beans += harvested;
+                state.beansHarvested += harvested;
+                state.maturePlants = [];
+                me.setState("game", state);
+            }
+        }
+    </script>
+</body>
+</html>
